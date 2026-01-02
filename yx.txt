@@ -1,0 +1,15 @@
+mi-app-movil/
+├── docker-compose.yml          # Orquestación de contenedores
+├── docker/
+│   └── php/
+│       └── Dockerfile         # Imagen PHP personalizada
+├── backend/                   # Tu aplicación CodeIgniter
+│   ├── app/
+│   ├── public/
+│   ├── writable/
+│   └── .env
+├── database/
+│   └── init.sql              # Script inicial de BD
+├── nginx/
+│   └── default.conf          # Configuración del servidor web
+└── README.md
