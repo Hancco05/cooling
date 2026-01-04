@@ -12,4 +12,4 @@ mi-app-movil/
 │   └── init.sql              # Script inicial de BD
 ├── nginx/
 │   └── default.conf          # Configuración del servidor web
-└── README.md!!!!!!
+└── README.md!!!!!!!!
