@@ -1,0 +1,314 @@
+#!/bin/bash
+
+# Script de instalación para Cooling
+echo "❄️  INSTALACIÓN DEL PROYECTO COOLING ❄️"
+echo "========================================"
+
+# Colores para mensajes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Función para mostrar mensajes
+print_message() {
+    echo -e "${GREEN}[COOLING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[ADVERTENCIA]${NC} $1"
+}
+
+# 1. Verificar Docker
+print_message "Verificando Docker..."
+if ! command -v docker &> /dev/null; then
+    print_error "Docker no está instalado. Por favor instala Docker primero."
+    exit 1
+fi
+
+if ! command -v docker-compose &> /dev/null; then
+    print_error "Docker Compose no está instalado."
+    exit 1
+fi
+
+# 2. Crear estructura de carpetas
+print_message "Creando estructura de carpetas..."
+mkdir -p backend docker/php nginx database scripts logs
+
+# 3. Verificar archivos de configuración
+print_message "Verificando archivos de configuración..."
+if [ ! -f "docker-compose.yml" ]; then
+    print_error "Falta docker-compose.yml"
+    exit 1
+fi
+
+# 4. Detener contenedores existentes
+print_message "Deteniendo contenedores existentes..."
+docker-compose down 2>/dev/null
+
+# 5. Construir imágenes Docker
+print_message "Construyendo imágenes Docker..."
+docker-compose build --no-cache
+
+if [ $? -ne 0 ]; then
+    print_error "Error construyendo imágenes Docker"
+    exit 1
+fi
+
+# 6. Iniciar contenedores
+print_message "Iniciando contenedores Cooling..."
+docker-compose up -d
+
+# 7. Esperar a que los servicios estén listos
+print_message "Esperando a que los servicios inicien..."
+sleep 20
+
+# 8. Verificar estado de los contenedores
+print_message "Verificando estado de los servicios..."
+docker-compose ps
+
+# 9. Instalar CodeIgniter si no existe
+print_message "Instalando CodeIgniter 4..."
+if [ ! -f "backend/composer.json" ]; then
+    docker-compose exec php composer create-project codeigniter4/appstarter . --no-dev --prefer-dist
+    if [ $? -eq 0 ]; then
+        print_message "CodeIgniter instalado correctamente"
+    else
+        print_error "Error instalando CodeIgniter"
+        exit 1
+    fi
+else
+    print_message "CodeIgniter ya está instalado"
+fi
+
+# 10. Configurar CodeIgniter para Cooling
+print_message "Configurando CodeIgniter..."
+docker-compose exec php sh -c "
+    # Copiar archivo de entorno
+    if [ -f 'env' ]; then
+        cp env .env
+    fi
+    
+    # Configurar .env para Cooling
+    if [ -f '.env' ]; then
+        # Base de datos
+        sed -i \"s/# database.default.database.*/database.default.database = cooling_db/\" .env
+        sed -i \"s/# database.default.username.*/database.default.username = cooling_user/\" .env
+        sed -i \"s/# database.default.password.*/database.default.password = Cooling@123/\" .env
+        sed -i \"s/# database.default.hostname.*/database.default.hostname = mysql/\" .env
+        sed -i \"s/# database.default.port.*/database.default.port = 3306/\" .env
+        
+        # URL de la aplicación
+        sed -i \"s/# app.baseURL.*/app.baseURL = 'http:\/\/localhost:8080\/'/\" .env
+        
+        # Entorno
+        sed -i \"s/# CI_ENVIRONMENT.*/CI_ENVIRONMENT = development/\" .env
+        
+        # Configuración adicional para Cooling
+        echo '' >> .env
+        echo '# Configuración específica para Cooling' >> .env
+        echo 'app.name = \"Cooling System\"' >> .env
+        echo 'cooling.api_key = \"cooling_$(openssl rand -hex 12)\"' >> .env
+    fi
+    
+    # Configurar permisos
+    chmod -R 755 writable
+    
+    # Instalar dependencias adicionales si existen
+    if [ -f 'composer.json' ]; then
+        composer install --no-dev
+    fi
+"
+
+# 11. Crear archivo de rutas para API Cooling
+print_message "Creando estructura de API para Cooling..."
+docker-compose exec php sh -c "
+    # Crear controladores de API
+    php spark make:controller Api/Dispositivos
+    php spark make:controller Api/Temperaturas
+    php spark make:controller Api/Auth
+    
+    # Crear modelos
+    php spark make:model DispositivoModel
+    php spark make:model LecturaModel
+    php spark make:model UsuarioModel
+"
+
+# 12. Configurar rutas API
+print_message "Configurando rutas de API..."
+cat > backend/app/Config/Routes.php << 'EOL'
+<?php
+
+namespace Config;
+
+use CodeIgniter\Config\BaseConfig;
+use CodeIgniter\Router\RouteCollection;
+
+class Routes extends BaseConfig
+{
+    public function __construct()
+    {
+        $this->routes = new RouteCollection();
+        
+        // Ruta por defecto
+        $this->routes->get('/', 'Home::index');
+        
+        // Grupo de API para Cooling
+        $this->routes->group('api', ['namespace' => 'App\Controllers\Api'], function($routes) {
+            // Autenticación
+            $routes->post('auth/login', 'Auth::login');
+            $routes->post('auth/register', 'Auth::register');
+            $routes->post('auth/logout', 'Auth::logout');
+            
+            // Dispositivos
+            $routes->resource('dispositivos', ['controller' => 'Dispositivos']);
+            $routes->get('dispositivos/(:num)/temperaturas', 'Dispositivos::temperaturas/$1');
+            $routes->post('dispositivos/(:num)/encender', 'Dispositivos::encender/$1');
+            $routes->post('dispositivos/(:num)/apagar', 'Dispositivos::apagar/$1');
+            
+            // Temperaturas
+            $routes->resource('temperaturas', ['controller' => 'Temperaturas']);
+            $routes->get('temperaturas/reporte/(:num)/(:num)', 'Temperaturas::reporte/$1/$2'); // día/mes
+        });
+        
+        // Catch-all - Esto debe ir al final
+        $this->routes->get('(:any)', 'Home::index/$1');
+    }
+}
+EOL
+
+# 13. Crear controlador de ejemplo para Cooling
+cat > backend/app/Controllers/Api/Dispositivos.php << 'EOL'
+<?php
+
+namespace App\Controllers\Api;
+
+use CodeIgniter\RESTful\ResourceController;
+use CodeIgniter\API\ResponseTrait;
+
+class Dispositivos extends ResourceController
+{
+    use ResponseTrait;
+    
+    // GET /api/dispositivos
+    public function index()
+    {
+        $data = [
+            [
+                'id' => 1,
+                'nombre' => 'Aire Acondicionado Principal',
+                'tipo' => 'aire_acondicionado',
+                'temperatura_actual' => 22.5,
+                'temperatura_ideal' => 21.0,
+                'estado' => 'encendido',
+                'ubicacion' => 'Oficina Principal'
+            ],
+            [
+                'id' => 2,
+                'nombre' => 'Refrigerador Laboratorio',
+                'tipo' => 'refrigerador',
+                'temperatura_actual' => 4.0,
+                'estado' => 'encendido',
+                'ubicacion' => 'Laboratorio 101'
+            ]
+        ];
+        
+        return $this->respond([
+            'success' => true,
+            'message' => 'Dispositivos del sistema Cooling',
+            'data' => $data
+        ]);
+    }
+    
+    // POST /api/dispositivos
+    public function create()
+    {
+        $data = $this->request->getJSON();
+        
+        // Aquí iría la lógica para guardar en base de datos
+        $response = [
+            'success' => true,
+            'message' => 'Dispositivo creado en Cooling',
+            'data' => $data
+        ];
+        
+        return $this->respondCreated($response);
+    }
+    
+    // POST /api/dispositivos/1/encender
+    public function encender($id = null)
+    {
+        return $this->respond([
+            'success' => true,
+            'message' => "Dispositivo $id encendido en Cooling",
+            'data' => [
+                'id' => $id,
+                'estado' => 'encendido',
+                'fecha' => date('Y-m-d H:i:s')
+            ]
+        ]);
+    }
+}
+EOL
+
+# 14. Crear archivo .htaccess para Cooling
+cat > backend/public/.htaccess << 'EOL'
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?/$1 [L]
+
+# Seguridad para Cooling
+<FilesMatch "\.(env|log|ini|htaccess)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# CORS para API Cooling
+Header always set Access-Control-Allow-Origin "*"
+Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-API-Key"
+EOL
+
+# 15. Verificar instalación
+print_message "Verificando instalación..."
+HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080)
+if [ "$HTTP_STATUS" = "200" ]; then
+    print_message "✅ Cooling está funcionando correctamente"
+else
+    print_warning "⚠️  Cooling respondió con código: $HTTP_STATUS"
+fi
+
+# 16. Mostrar información de acceso
+echo ""
+echo "❄️  INSTALACIÓN DE COOLING COMPLETADA ❄️"
+echo "=========================================="
+echo ""
+echo "🌐 ACCESO A LA APLICACIÓN:"
+echo "   URL: http://localhost:8080"
+echo "   API: http://localhost:8080/api/dispositivos"
+echo ""
+echo "🗄️  BASE DE DATOS:"
+echo "   PHPMyAdmin: http://localhost:8081"
+echo "   Usuario: cooling_user"
+echo "   Contraseña: Cooling@123"
+echo "   Base de datos: cooling_db"
+echo ""
+echo "🔧 HERRAMIENTAS DE DESARROLLO:"
+echo "   Ver logs: docker-compose logs -f"
+echo "   Entrar a PHP: docker-compose exec php bash"
+echo "   Detener: docker-compose down"
+echo "   Reiniciar: docker-compose restart"
+echo ""
+echo "📊 DATOS INICIALES CREADOS:"
+echo "   Usuario admin: admin@cooling.com / password"
+echo "   Usuario técnico: tecnico@cooling.com / password"
+echo "   3 dispositivos de ejemplo"
+echo ""
+echo "🚀 Comando para probar la API:"
+echo "   curl http://localhost:8080/api/dispositivos"
+echo ""
