@@ -1,15 +1,31 @@
-mi-app-movil/
-├── docker-compose.yml          # Orquestación de contenedores
+cooling/
+├── docker-compose.yml          # Configuración principal
+├── backend/                    # Aplicación CodeIgniter
+│   ├── app/
+│   │   ├── Controllers/
+│   │   │   ├── Api/
+│   │   │   │   ├── Dispositivos.php
+│   │   │   │   ├── Temperaturas.php
+│   │   │   │   └── Auth.php
+│   │   │   └── Home.php
+│   │   ├── Models/
+│   │   │   ├── DispositivoModel.php
+│   │   │   ├── LecturaModel.php
+│   │   │   └── UsuarioModel.php
+│   │   └── Config/
+│   ├── public/
+│   │   ├── index.php
+│   │   └── .htaccess
+│   └── .env
 ├── docker/
 │   └── php/
-│       └── Dockerfile         # Imagen PHP personalizada
-├── backend/                   # Tu aplicación CodeIgniter
-│   ├── app/
-│   ├── public/
-│   ├── writable/
-│   └── .env
-├── database/
-│   └── init.sql              # Script inicial de BD
+│       ├── Dockerfile
+│       └── php.ini
 ├── nginx/
-│   └── default.conf          # Configuración del servidor web
-└── README.md!
+│   └── cooling.conf
+├── database/
+│   ├── init.sql
+│   └── backup/
+├── scripts/
+│   └── install-cooling.sh
+└── logs/                      # Logs de la aplicación
