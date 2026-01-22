@@ -28,4 +28,4 @@ cooling/
 │   └── backup/
 ├── scripts/
 │   └── install-cooling.sh
-└── logs/                      # Logs de la aplicación
+└── logs/                      # Logs de la aplicación!
