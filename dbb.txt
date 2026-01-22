@@ -1,0 +1,12 @@
+-- Tablas principales
+usuarios           # Usuarios del sistema
+dispositivos       # Dispositivos de cooling
+lecturas           # Lecturas de temperatura
+alertas            # Alertas generadas
+mantenimientos     # Programación de mantenimiento
+
+-- Relaciones
+usuarios (1) ── (n) dispositivos
+dispositivos (1) ── (n) lecturas
+dispositivos (1) ── (n) alertas
+dispositivos (1) ── (n) mantenimientos
