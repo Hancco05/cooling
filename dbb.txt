@@ -10,3 +10,10 @@ usuarios (1) ── (n) dispositivos
 dispositivos (1) ── (n) lecturas
 dispositivos (1) ── (n) alertas
 dispositivos (1) ── (n) mantenimientos
+
+🌐 Web App:          http://localhost:8080/cooling-app.html
+📱 API REST:         http://localhost:8080/api/dispositivos
+🔌 WebSocket:        ws://localhost:8082
+🗄️  PHPMyAdmin:      http://localhost:8081
+📊 Dashboard Admin:  http://localhost:8080/admin/dashboard
+

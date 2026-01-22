@@ -1,4 +1,4 @@
-COOLING/                              # Directorio raíz del proyecto
+COOLING/                              
 │
 ├── 📁 docker/                        # Configuración de Docker
 │   ├── 📁 php/
