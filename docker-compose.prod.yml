@@ -1,0 +1,216 @@
+version: '3.8'
+
+services:
+  # Load Balancer
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: cooling-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/prod/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/prod/ssl:/etc/nginx/ssl
+      - ./nginx/prod/logs:/var/log/nginx
+    depends_on:
+      - php1
+      - php2
+    networks:
+      - cooling-prod
+    restart: always
+
+  # PHP Application (multiple instances)
+  php1:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile.prod
+    container_name: cooling-php-1
+    volumes:
+      - ./backend:/var/www/html:ro
+      - php-session-data:/tmp/php-sessions
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - DB_HOST=cooling-db
+      - REDIS_HOST=cooling-redis
+    networks:
+      - cooling-prod
+    restart: always
+    healthcheck:
+      test: ["CMD", "php", "-v"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  php2:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile.prod
+    container_name: cooling-php-2
+    volumes:
+      - ./backend:/var/www/html:ro
+      - php-session-data:/tmp/php-sessions
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - DB_HOST=cooling-db
+      - REDIS_HOST=cooling-redis
+    networks:
+      - cooling-prod
+    restart: always
+
+  # Database Cluster
+  cooling-db:
+    image: mysql:8.0
+    container_name: cooling-db
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max_connections=1000
+      --innodb_buffer_pool_size=1G
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${DB_DATABASE}
+      - MYSQL_USER=${DB_USERNAME}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - mysql-prod-data:/var/lib/mysql
+      - ./database/backup:/backup
+      - ./database/prod/init:/docker-entrypoint-initdb.d
+    networks:
+      - cooling-prod
+    restart: always
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Redis Cache
+  cooling-redis:
+    image: redis:7-alpine
+    container_name: cooling-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis-prod-data:/data
+    networks:
+      - cooling-prod
+    restart: always
+
+  # WebSocket Server
+  cooling-websocket:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile.prod
+    container_name: cooling-websocket
+    command: php /var/www/html/websocket_server.php
+    volumes:
+      - ./backend:/var/www/html:ro
+    ports:
+      - "8082:8082"
+    environment:
+      - APP_ENV=production
+      - WS_HOST=0.0.0.0
+      - WS_PORT=8082
+    networks:
+      - cooling-prod
+    restart: always
+
+  # Queue Worker
+  cooling-worker:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile.prod
+    container_name: cooling-worker
+    command: php /var/www/html/artisan queue:work --sleep=3 --tries=3
+    volumes:
+      - ./backend:/var/www/html:ro
+    environment:
+      - APP_ENV=production
+      - QUEUE_CONNECTION=redis
+    depends_on:
+      - cooling-redis
+    networks:
+      - cooling-prod
+    restart: always
+
+  # Monitoring - Prometheus
+  cooling-prometheus:
+    image: prom/prometheus:latest
+    container_name: cooling-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    networks:
+      - cooling-prod
+    restart: always
+
+  # Monitoring - Grafana
+  cooling-grafana:
+    image: grafana/grafana:latest
+    container_name: cooling-grafana
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3000:3000"
+    networks:
+      - cooling-prod
+    restart: always
+
+  # Backup Service
+  cooling-backup:
+    image: prodrigestivill/postgres-backup-local
+    container_name: cooling-backup
+    volumes:
+      - ./backups:/backups
+      - ./database/backup-script.sh:/backup-script.sh
+    environment:
+      - POSTGRES_HOST=cooling-db
+      - POSTGRES_DB=${DB_DATABASE}
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - SCHEDULE=@daily
+      - BACKUP_KEEP_DAYS=7
+      - BACKUP_KEEP_WEEKS=4
+      - BACKUP_KEEP_MONTHS=6
+    depends_on:
+      - cooling-db
+    networks:
+      - cooling-prod
+    restart: always
+
+networks:
+  cooling-prod:
+    driver: bridge
+    name: cooling-production
+
+volumes:
+  mysql-prod-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/data/mysql
+      o: bind
+  redis-prod-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/data/redis
+      o: bind
+  php-session-data:
+  prometheus-data:
+  grafana-data:
