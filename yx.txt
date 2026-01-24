@@ -165,4 +165,4 @@ COOLING/
 ├── 📄 README.md                   # Documentación principal
 ├── 📄 LICENSE                     # Licencia del proyecto
 │
-└── 📄 .env.example                # Variables de entorno ejemplo!
+└── 📄 .env.example                # Variables de entorno ejemplo
