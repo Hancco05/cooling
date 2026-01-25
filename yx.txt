@@ -166,3 +166,6 @@ COOLING/
 ├── 📄 LICENSE                     # Licencia del proyecto
 │
 └── 📄 .env.example                # Variables de entorno ejemplo
+
+
+update
