@@ -167,3 +167,4 @@ COOLING/
 │
 └── 📄 .env.example                # Variables de entorno ejemplo
 
+!
