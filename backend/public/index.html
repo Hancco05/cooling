@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cooling System - Control de Temperatura Inteligente</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        :root {
+            --primary: #4facfe;
+            --secondary: #00f2fe;
+            --dark: #1a1a2e;
+            --light: #f8f9fa;
+            --success: #00b894;
+            --danger: #ff6b6b;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--dark) 0%, #16213e 100%);
+            color: var(--light);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Header y Navegación */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 5%;
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(10px);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.8rem;
+            font-weight: bold;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .logo i {
+            font-size: 2rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: var(--light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+        }
+
+        .nav-links a:hover {
+            background: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .cta-button {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 0.8rem 2rem;
+            border-radius: 30px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(79, 172, 254, 0.3);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 10rem 5% 5rem;
+            display: flex;
+            align-items: center;
+            gap: 4rem;
+            min-height: 100vh;
+        }
+
+        .hero-content {
+            flex: 1;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            color: #b0b7c3;
+            line-height: 1.6;
+            max-width: 600px;
+        }
+
+        .hero-image {
+            flex: 1;
+            position: relative;
+        }
+
+        .hero-image img {
+            width: 100%;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        /* Features */
+        .features {
+            padding: 5rem 5%;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 3rem;
+            font-size: 2.5rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 15px;
+            text-align: center;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            background: rgba(255, 255, 255, 0.15);
+            border-color: var(--primary);
+        }
+
+        .feature-card i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+
+        /* Login Modal */
+        .login-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .login-container {
+            background: var(--dark);
+            padding: 3rem;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 400px;
+            position: relative;
+            border: 2px solid var(--primary);
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: var(--light);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .login-tabs {
+            display: flex;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            color: #b0b7c3;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom: 3px solid var(--primary);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #b0b7c3;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: white;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(0, 0, 0, 0.3);
+            margin-top: 5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero {
+                flex-direction: column;
+                text-align: center;
+                padding-top: 8rem;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">
+            <i class="fas fa-snowflake"></i>
+            <span>Cooling Admin</span>
+        </div>
+        
+        <div class="nav-links">
+            <a href="#" class="nav-item active">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-thermometer-half"></i> Dispositivos
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-users"></i> Usuarios
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-chart-line"></i> Reportes
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-cog"></i> Configuración
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-bell"></i> Alertas
+            </a>
+        </div>
+        
+        <a href="/" class="logout-btn">
+            <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+        </a>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="header">
+            <h1>Panel de Administración</h1>
+            <div class="user-info">
+                <div class="user-avatar">A</div>
+                <div>
+                    <strong>Administrador</strong>
+                    <p style="color: #666; font-size: 0.9rem;">admin@cooling.com</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>42</h3>
+                <p>Dispositivos Activos</p>
+            </div>
+            <div class="stat-card">
+                <h3>156</h3>
+                <p>Alertas Hoy</p>
+            </div>
+            <div class="stat-card">
+                <h3>23.5°C</h3>
+                <p>Temperatura Promedio</p>
+            </div>
+            <div class="stat-card">
+                <h3>98%</h3>
+                <p>Eficiencia del Sistema</p>
+            </div>
+        </div>
+        
+        <!-- Dispositivos -->
+        <div class="section">
+            <h2>Dispositivos Recientes</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Tipo</th>
+                        <th>Temperatura</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><i class="fas fa-wind"></i> Aire Principal</td>
+                        <td>Aire Acondicionado</td>
+                        <td><strong>22.5°C</strong></td>
+                        <td><span class="status status-online">Online</span></td>
+                        <td>
+                            <button class="btn btn-primary">Editar</button>
+                            <button class="btn btn-danger">Apagar</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><i class="fas fa-snowflake"></i> Refrigerador Lab</td>
+                        <td>Refrigerador</td>
+                        <td><strong>4.2°C</strong></td>
+                        <td><span class="status status-warning">Alerta</span></td>
+                        <td>
+                            <button class="btn btn-primary">Editar</button>
+                            <button class="btn btn-success">Encender</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><i class="fas fa-fan"></i> Ventilador Server</td>
+                        <td>Ventilador</td>
+                        <td><strong>18.0°C</strong></td>
+                        <td><span class="status status-online">Online</span></td>
+                        <td>
+                            <button class="btn btn-primary">Editar</button>
+                            <button class="btn btn-danger">Apagar</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Usuarios -->
+        <div class="section">
+            <h2>Usuarios del Sistema</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Email</th>
+                        <th>Rol</th>
+                        <th>Último Acceso</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Juan Pérez</td>
+                        <td>juan@empresa.com</td>
+                        <td><span class="status status-online">Usuario</span></td>
+                        <td>Hoy, 10:30 AM</td>
+                        <td><button class="btn btn-primary">Editar</button></td>
+                    </tr>
+                    <tr>
+                        <td>María López</td>
+                        <td>maria@empresa.com</td>
+                        <td><span class="status status-online">Administrador</span></td>
+                        <td>Ayer, 15:45 PM</td>
+                        <td><button class="btn btn-primary">Editar</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script>
+        // Simular datos dinámicos
+        function updateStats() {
+            document.querySelector('.stats-grid h3:nth-child(1)').textContent = 
+                Math.floor(Math.random() * 50) + 20;
+            document.querySelector('.stats-grid h3:nth-child(2)').textContent = 
+                Math.floor(Math.random() * 200) + 100;
+            document.querySelector('.stats-grid h3:nth-child(3)').textContent = 
+                (Math.random() * 5 + 20).toFixed(1) + '°C';
+        }
+        
+        // Actualizar cada 10 segundos
+        setInterval(updateStats, 10000);
+        
+        // Manejar logout
+        document.querySelector('.logout-btn').addEventListener('click', (e) => {
+            e.preventDefault();
+            if (confirm('¿Estás seguro de cerrar sesión?')) {
+                // Aquí limpiar sesión/token
+                window.location.href = '/';
+            }
+        });
+    </script>
+</body>
+</html>
