@@ -1,7 +1,41 @@
 services:
+  # PHP + Apache para desarrollo
   web:
     image: php:8.1-apache
     ports:
       - "8080:80"
     volumes:
       - ./backend:/var/www/html
+    environment:
+      - DB_HOST=mysql
+      - DB_USER=cooling_user
+      - DB_PASS=cooling123
+      - DB_NAME=cooling_db
+    depends_on:
+      - mysql
+    command: >
+      bash -c "
+      apt-get update &&
+      apt-get install -y git zip unzip curl &&
+      curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer &&
+      cd /var/www/html &&
+      a2enmod rewrite &&
+      docker-php-ext-install mysqli pdo pdo_mysql &&
+      apache2-foreground
+      "
+
+  # Base de datos MySQL
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: cooling_db
+      MYSQL_USER: cooling_user
+      MYSQL_PASSWORD: cooling123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+volumes:
+  mysql-data:
